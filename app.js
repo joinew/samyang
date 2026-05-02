@@ -12,13 +12,18 @@ const TIME_SLOT_LABELS = {
 
 const state = {
   places: [],
-  activeFilter: "all",
+  activeView: "today",
+  openDetailId: null,
   search: "",
   deferredInstallPrompt: null
 };
 
 const el = {
-  list: document.querySelector("#placeList"),
+  placeList: document.querySelector("#placeList"),
+  todayList: document.querySelector("#todayList"),
+  upcomingList: document.querySelector("#upcomingList"),
+  todayView: document.querySelector("#todayView"),
+  allView: document.querySelector("#allView"),
   search: document.querySelector("#searchInput"),
   newPlaceBtn: document.querySelector("#newPlaceBtn"),
   exportBtn: document.querySelector("#exportBtn"),
@@ -220,10 +225,8 @@ function sortPlaces(places) {
 function getVisiblePlaces() {
   const keyword = state.search.trim().toLowerCase();
   return sortPlaces(state.places).filter((place) => {
-    const status = getStatus(place);
-    const matchesFilter = state.activeFilter === "all" || state.activeFilter === status;
     const haystack = [place.name, place.address, place.note, scheduleLabel(place)].join(" ").toLowerCase();
-    return matchesFilter && haystack.includes(keyword);
+    return haystack.includes(keyword);
   });
 }
 
@@ -241,43 +244,113 @@ function updateCounts() {
 
 function render() {
   updateCounts();
-  document.querySelectorAll(".tab").forEach((tab) => {
-    tab.classList.toggle("active", tab.dataset.filter === state.activeFilter);
+  document.querySelectorAll(".view-tab").forEach((tab) => {
+    tab.classList.toggle("active", tab.dataset.view === state.activeView);
+  });
+  el.todayView.classList.toggle("hidden", state.activeView !== "today");
+  el.allView.classList.toggle("hidden", state.activeView !== "all");
+  renderTodayView();
+  renderAllView();
+}
+
+function renderTodayView() {
+  const duePlaces = sortPlaces(state.places).filter((place) => {
+    const status = getStatus(place);
+    return status === "overdue" || status === "today";
   });
 
-  const places = getVisiblePlaces();
-  if (places.length === 0) {
-    el.list.innerHTML = `<div class="empty">등록된 방문처가 없습니다. 방문처를 추가해보세요.</div>`;
+  if (duePlaces.length === 0) {
+    el.todayList.innerHTML = `<div class="empty">오늘 방문할 곳이 없습니다.</div>`;
+  } else {
+    el.todayList.innerHTML = duePlaces.map((place) => renderScheduleRow(place)).join("");
+  }
+
+  const upcoming = sortPlaces(state.places).filter((place) => getStatus(place) === "soon");
+  if (upcoming.length === 0) {
+    el.upcomingList.innerHTML = "";
     return;
   }
 
-  el.list.innerHTML = places.map((place) => {
-    const status = getStatus(place);
-    const nextVisit = getNextVisit(place);
-    const lastVisit = place.lastVisit || getSchedule(place).lastVisit || "-";
-    return `
-      <article class="place-card">
-        <div>
-          <div class="place-title-row">
-            <h3>${escapeHtml(place.name)}</h3>
-            <span class="badge ${status}">${statusLabel(status)}</span>
+  const grouped = upcoming.reduce((groups, place) => {
+    const date = getNextVisit(place);
+    groups[date] = groups[date] || [];
+    groups[date].push(place);
+    return groups;
+  }, {});
+
+  el.upcomingList.innerHTML = `
+    <h2>곧 방문</h2>
+    ${Object.keys(grouped).sort().map((date) => `
+      <div class="upcoming-group">
+        <h3>${date}</h3>
+        ${grouped[date].map((place) => `
+          <div class="upcoming-item">
+            <strong>${escapeHtml(place.name)}</strong>
+            <span>${escapeHtml(scheduleLabel(place))}</span>
           </div>
-          <div class="meta">
-            <span><b>${nextVisit}</b>다음 방문</span>
-            <span><b>${lastVisit}</b>마지막 방문</span>
-            <span><b>${escapeHtml(scheduleLabel(place))}</b>스케줄</span>
-          </div>
-          ${place.address ? `<p class="note">${escapeHtml(place.address)}</p>` : ""}
-          ${place.note ? `<p class="note">${escapeHtml(place.note)}</p>` : ""}
+        `).join("")}
+      </div>
+    `).join("")}
+  `;
+}
+
+function renderAllView() {
+  const places = getVisiblePlaces();
+  if (places.length === 0) {
+    el.placeList.innerHTML = `<div class="empty">등록된 방문처가 없습니다. 방문처를 추가해보세요.</div>`;
+    return;
+  }
+
+  el.placeList.innerHTML = places.map((place) => renderManageRow(place)).join("");
+}
+
+function renderScheduleRow(place) {
+  const status = getStatus(place);
+  const nextVisit = getNextVisit(place);
+  const dateLabel = status === "overdue" ? "지연" : "오늘";
+  return `
+    <article class="schedule-row">
+      <div class="schedule-date">
+        <b>${dateLabel}</b>
+        ${nextVisit}
+      </div>
+      <div class="schedule-main">
+        <strong>${escapeHtml(place.name)}</strong>
+        <span>${escapeHtml(scheduleLabel(place))}</span>
+      </div>
+      <button class="done-btn" data-action="complete" data-id="${place.id}" type="button" aria-label="방문 완료">✓</button>
+    </article>
+  `;
+}
+
+function renderManageRow(place) {
+  const status = getStatus(place);
+  const nextVisit = getNextVisit(place);
+  const lastVisit = place.lastVisit || getSchedule(place).lastVisit || "-";
+  const isOpen = state.openDetailId === place.id;
+  return `
+    <article class="manage-row">
+      <div class="schedule-main">
+        <strong>${escapeHtml(place.name)}</strong>
+        <span>${nextVisit} · ${statusLabel(status)} · ${escapeHtml(scheduleLabel(place))}</span>
+      </div>
+      <button class="row-more-btn" data-action="toggle" data-id="${place.id}" type="button" aria-label="상세 보기">${isOpen ? "−" : "+"}</button>
+      <div class="detail-panel ${isOpen ? "open" : ""}">
+        <div class="meta">
+          <span><b>${nextVisit}</b>다음 방문</span>
+          <span><b>${lastVisit}</b>마지막 방문</span>
+          <span><b>${escapeHtml(scheduleLabel(place))}</b>스케줄</span>
         </div>
-        <div class="card-actions">
+        ${place.address ? `<p class="note">${escapeHtml(place.address)}</p>` : ""}
+        ${place.note ? `<p class="note">${escapeHtml(place.note)}</p>` : ""}
+        <div class="detail-actions">
           <button class="primary-btn" data-action="complete" data-id="${place.id}" type="button">완료</button>
           <button class="secondary-btn" data-action="history" data-id="${place.id}" type="button">기록</button>
           <button class="secondary-btn" data-action="edit" data-id="${place.id}" type="button">수정</button>
         </div>
-      </article>
-    `;
-  }).join("");
+      </div>
+    </article>
+  `;
 }
 
 function escapeHtml(value) {
@@ -554,14 +627,14 @@ function bindEvents() {
     render();
   });
 
-  document.querySelectorAll(".tab").forEach((tab) => {
+  document.querySelectorAll(".view-tab").forEach((tab) => {
     tab.addEventListener("click", () => {
-      state.activeFilter = tab.dataset.filter;
+      state.activeView = tab.dataset.view;
       render();
     });
   });
 
-  el.list.addEventListener("click", (event) => {
+  document.addEventListener("click", (event) => {
     const button = event.target.closest("button[data-action]");
     if (!button) return;
     const { action, id } = button.dataset;
@@ -569,6 +642,10 @@ function bindEvents() {
     if (action === "complete") completeVisit(id);
     if (action === "history") openHistory(id);
     if (action === "edit") openPlaceDialog(place);
+    if (action === "toggle") {
+      state.openDetailId = state.openDetailId === id ? null : id;
+      render();
+    }
   });
 
   window.addEventListener("beforeinstallprompt", (event) => {

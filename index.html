@@ -40,26 +40,31 @@
       </article>
     </section>
 
-    <section class="toolbar">
-      <div class="tabs" role="tablist" aria-label="방문처 필터">
-        <button class="tab active" data-filter="all" type="button">전체</button>
-        <button class="tab" data-filter="overdue" type="button">지연</button>
-        <button class="tab" data-filter="today" type="button">오늘</button>
-        <button class="tab" data-filter="soon" type="button">곧 방문</button>
+    <section class="view-switch" role="tablist" aria-label="보기 전환">
+      <button class="view-tab active" data-view="today" type="button">오늘 일정</button>
+      <button class="view-tab" data-view="all" type="button">전체 관리</button>
+    </section>
+
+    <section id="todayView">
+      <div class="section-head">
+        <h2>오늘 가야 할 곳</h2>
+        <button id="newPlaceBtn" class="primary-btn compact" type="button">추가</button>
       </div>
-      <button id="newPlaceBtn" class="primary-btn" type="button">방문처 추가</button>
+      <section id="todayList" class="schedule-table" aria-live="polite"></section>
+      <section id="upcomingList" class="upcoming-panel" aria-live="polite"></section>
     </section>
 
-    <section class="tools-row">
-      <input id="searchInput" class="search" type="search" placeholder="방문처, 주소, 메모 검색">
-      <button id="exportBtn" class="secondary-btn" type="button">백업</button>
-      <label class="secondary-btn file-btn">
-        복원
-        <input id="importInput" type="file" accept="application/json">
-      </label>
+    <section id="allView" class="hidden">
+      <section class="tools-row">
+        <input id="searchInput" class="search" type="search" placeholder="방문처, 주소, 메모 검색">
+        <button id="exportBtn" class="secondary-btn compact" type="button">백업</button>
+        <label class="secondary-btn compact file-btn">
+          복원
+          <input id="importInput" type="file" accept="application/json">
+        </label>
+      </section>
+      <section id="placeList" class="manage-list" aria-live="polite"></section>
     </section>
-
-    <section id="placeList" class="place-list" aria-live="polite"></section>
   </main>
 
   <dialog id="placeDialog">
@@ -72,12 +77,12 @@
 
       <label>
         방문처명
-        <input id="nameInput" type="text" required placeholder="예: A마트 강남점">
+        <input id="nameInput" type="text" required placeholder="예: 세븐주차장">
       </label>
 
       <label>
         주소 / 위치 메모
-        <input id="addressInput" type="text" placeholder="예: 서울 강남구 ...">
+        <input id="addressInput" type="text" placeholder="예: 입구 오른쪽, 지하 계단 앞">
       </label>
 
       <label>

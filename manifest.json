@@ -1,11 +1,11 @@
 {
-  "name": "방문 스케줄",
-  "short_name": "방문스케줄",
-  "description": "방문처별 방문 주기를 관리하는 로컬 PWA",
+  "name": "Visit Schedule",
+  "short_name": "Visits",
+  "description": "A local PWA for managing recurring visit schedules.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#f5f2ea",
+  "background_color": "#f7f4ed",
   "theme_color": "#1f6f5b",
   "icons": [
     {
