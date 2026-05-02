@@ -80,24 +80,79 @@
         <input id="addressInput" type="text" placeholder="예: 서울 강남구 ...">
       </label>
 
-      <div class="form-grid">
+      <label>
+        스케줄 방식
+        <select id="scheduleTypeInput" required>
+          <option value="interval">일반 반복</option>
+          <option value="weekday">요일 반복</option>
+          <option value="rotation">순번 반복</option>
+        </select>
+      </label>
+
+      <section id="intervalFields" class="schedule-fields">
+        <div class="form-grid">
+          <label>
+            주기 값
+            <input id="intervalInput" type="number" min="1" value="1">
+          </label>
+          <label>
+            주기 단위
+            <select id="unitInput">
+              <option value="days">일마다</option>
+              <option value="weeks">주마다</option>
+              <option value="months">개월마다</option>
+            </select>
+          </label>
+        </div>
+
         <label>
-          주기 값
-          <input id="intervalInput" type="number" min="1" value="1" required>
+          마지막 방문일
+          <input id="lastVisitInput" type="date">
         </label>
+      </section>
+
+      <section id="weekdayFields" class="schedule-fields hidden">
+        <div class="weekday-picker" aria-label="요일 선택">
+          <label><input type="checkbox" name="weekday" value="1"> 월</label>
+          <label><input type="checkbox" name="weekday" value="2"> 화</label>
+          <label><input type="checkbox" name="weekday" value="3"> 수</label>
+          <label><input type="checkbox" name="weekday" value="4"> 목</label>
+          <label><input type="checkbox" name="weekday" value="5"> 금</label>
+          <label><input type="checkbox" name="weekday" value="6"> 토</label>
+          <label><input type="checkbox" name="weekday" value="0"> 일</label>
+        </div>
+      </section>
+
+      <section id="rotationFields" class="schedule-fields hidden">
         <label>
-          주기 단위
-          <select id="unitInput" required>
-            <option value="days">일마다</option>
-            <option value="weeks">주마다</option>
-            <option value="months">개월마다</option>
-          </select>
+          그룹명
+          <input id="rotationGroupInput" type="text" placeholder="예: 이틀 방문 A그룹">
         </label>
-      </div>
+        <div class="form-grid">
+          <label>
+            방문 간격
+            <input id="rotationIntervalInput" type="number" min="1" value="2">
+          </label>
+          <label>
+            장소 순서
+            <input id="rotationOrderInput" type="number" min="1" value="1">
+          </label>
+        </div>
+        <label>
+          그룹 시작일
+          <input id="rotationStartInput" type="date">
+        </label>
+      </section>
 
       <label>
-        마지막 방문일
-        <input id="lastVisitInput" type="date" required>
+        시간대
+        <select id="timeSlotInput">
+          <option value="all-day">종일</option>
+          <option value="morning">오전</option>
+          <option value="afternoon">오후</option>
+          <option value="evening">저녁</option>
+          <option value="half-day">반나절</option>
+        </select>
       </label>
 
       <label>

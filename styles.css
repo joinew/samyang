@@ -345,6 +345,33 @@ label textarea {
   color: var(--ink);
 }
 
+.schedule-fields {
+  margin-bottom: 12px;
+}
+
+.weekday-picker {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.weekday-picker label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+}
+
+.weekday-picker input {
+  width: auto;
+  margin-right: 5px;
+}
+
 .form-grid {
   display: grid;
   grid-template-columns: 1fr;

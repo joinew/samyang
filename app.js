@@ -1,4 +1,14 @@
-const STORAGE_KEY = "visit-schedule-pwa-v1";
+const STORAGE_KEY = "visit-schedule-pwa-v2";
+const LEGACY_KEY = "visit-schedule-pwa-v1";
+
+const WEEKDAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
+const TIME_SLOT_LABELS = {
+  "all-day": "종일",
+  morning: "오전",
+  afternoon: "오후",
+  evening: "저녁",
+  "half-day": "반나절"
+};
 
 const state = {
   places: [],
@@ -22,9 +32,19 @@ const el = {
   placeId: document.querySelector("#placeId"),
   nameInput: document.querySelector("#nameInput"),
   addressInput: document.querySelector("#addressInput"),
+  scheduleTypeInput: document.querySelector("#scheduleTypeInput"),
+  intervalFields: document.querySelector("#intervalFields"),
   intervalInput: document.querySelector("#intervalInput"),
   unitInput: document.querySelector("#unitInput"),
   lastVisitInput: document.querySelector("#lastVisitInput"),
+  weekdayFields: document.querySelector("#weekdayFields"),
+  weekdayInputs: [...document.querySelectorAll("input[name='weekday']")],
+  rotationFields: document.querySelector("#rotationFields"),
+  rotationGroupInput: document.querySelector("#rotationGroupInput"),
+  rotationIntervalInput: document.querySelector("#rotationIntervalInput"),
+  rotationOrderInput: document.querySelector("#rotationOrderInput"),
+  rotationStartInput: document.querySelector("#rotationStartInput"),
+  timeSlotInput: document.querySelector("#timeSlotInput"),
   noteInput: document.querySelector("#noteInput"),
   historyDialog: document.querySelector("#historyDialog"),
   historyTitle: document.querySelector("#historyTitle"),
@@ -39,7 +59,7 @@ const el = {
 };
 
 function todayString() {
-  return new Date().toISOString().slice(0, 10);
+  return formatDate(new Date());
 }
 
 function parseDate(value) {
@@ -52,6 +72,12 @@ function formatDate(date) {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function addDays(dateValue, days) {
+  const date = parseDate(dateValue);
+  date.setDate(date.getDate() + days);
+  return formatDate(date);
 }
 
 function addInterval(dateValue, interval, unit) {
@@ -69,8 +95,59 @@ function daysBetween(fromValue, toValue) {
   return Math.round((to - from) / oneDay);
 }
 
+function getSchedule(place) {
+  if (place.schedule) return place.schedule;
+  return {
+    type: "interval",
+    interval: Number(place.interval || 1),
+    unit: place.unit || "days",
+    lastVisit: place.lastVisit || todayString()
+  };
+}
+
+function getNextIntervalVisit(schedule) {
+  return addInterval(schedule.lastVisit || todayString(), Number(schedule.interval || 1), schedule.unit || "days");
+}
+
+function getNextWeekdayVisit(schedule) {
+  const weekdays = schedule.weekdays?.length ? schedule.weekdays.map(Number) : [new Date().getDay()];
+  const today = todayString();
+  const todayDate = parseDate(today);
+  for (let offset = 0; offset <= 7; offset += 1) {
+    const candidate = new Date(todayDate);
+    candidate.setDate(todayDate.getDate() + offset);
+    if (weekdays.includes(candidate.getDay())) return formatDate(candidate);
+  }
+  return today;
+}
+
+function getRotationGroupPlaces(groupName) {
+  return state.places
+    .filter((place) => getSchedule(place).type === "rotation" && getSchedule(place).group === groupName)
+    .sort((a, b) => Number(getSchedule(a).order || 1) - Number(getSchedule(b).order || 1));
+}
+
+function getNextRotationVisit(place) {
+  const schedule = getSchedule(place);
+  const groupPlaces = getRotationGroupPlaces(schedule.group);
+  const groupSize = Math.max(groupPlaces.length, Number(schedule.groupSize || 1));
+  const order = Math.max(1, Number(schedule.order || 1));
+  const intervalDays = Math.max(1, Number(schedule.intervalDays || 2));
+  const startDate = schedule.startDate || todayString();
+  const today = todayString();
+  const firstVisit = addDays(startDate, (order - 1) * intervalDays);
+  if (daysBetween(today, firstVisit) >= 0) return firstVisit;
+  const cycleDays = groupSize * intervalDays;
+  const elapsed = Math.abs(daysBetween(firstVisit, today));
+  const cycles = Math.ceil(elapsed / cycleDays);
+  return addDays(firstVisit, cycles * cycleDays);
+}
+
 function getNextVisit(place) {
-  return addInterval(place.lastVisit, Number(place.interval), place.unit);
+  const schedule = getSchedule(place);
+  if (schedule.type === "weekday") return getNextWeekdayVisit(schedule);
+  if (schedule.type === "rotation") return getNextRotationVisit(place);
+  return getNextIntervalVisit(schedule);
 }
 
 function getStatus(place) {
@@ -92,23 +169,38 @@ function statusLabel(status) {
   }[status];
 }
 
-function intervalLabel(place) {
-  const unit = {
-    days: "일",
-    weeks: "주",
-    months: "개월"
-  }[place.unit];
-  return `${place.interval}${unit}마다`;
+function scheduleLabel(place) {
+  const schedule = getSchedule(place);
+  if (schedule.type === "weekday") {
+    const days = (schedule.weekdays || []).map((day) => WEEKDAY_LABELS[Number(day)]).join(", ");
+    return `${days} ${timeSlotLabel(schedule.timeSlot)}`.trim();
+  }
+  if (schedule.type === "rotation") {
+    return `${schedule.group} / ${schedule.intervalDays}일 간격 / ${schedule.order}번`;
+  }
+  const unit = { days: "일", weeks: "주", months: "개월" }[schedule.unit || "days"];
+  return `${schedule.interval || 1}${unit}마다 ${timeSlotLabel(schedule.timeSlot)}`.trim();
+}
+
+function timeSlotLabel(value) {
+  if (!value || value === "all-day") return "";
+  return TIME_SLOT_LABELS[value] || "";
 }
 
 function loadState() {
   const saved = localStorage.getItem(STORAGE_KEY);
-  if (!saved) return;
-  try {
-    const parsed = JSON.parse(saved);
-    state.places = Array.isArray(parsed.places) ? parsed.places : [];
-  } catch {
-    state.places = [];
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      state.places = Array.isArray(parsed.places) ? parsed.places : [];
+      return;
+    } catch {
+      state.places = [];
+    }
+  }
+
+  if (localStorage.getItem(LEGACY_KEY)) {
+    localStorage.removeItem(LEGACY_KEY);
   }
 }
 
@@ -130,7 +222,7 @@ function getVisiblePlaces() {
   return sortPlaces(state.places).filter((place) => {
     const status = getStatus(place);
     const matchesFilter = state.activeFilter === "all" || state.activeFilter === status;
-    const haystack = [place.name, place.address, place.note].join(" ").toLowerCase();
+    const haystack = [place.name, place.address, place.note, scheduleLabel(place)].join(" ").toLowerCase();
     return matchesFilter && haystack.includes(keyword);
   });
 }
@@ -162,6 +254,7 @@ function render() {
   el.list.innerHTML = places.map((place) => {
     const status = getStatus(place);
     const nextVisit = getNextVisit(place);
+    const lastVisit = place.lastVisit || getSchedule(place).lastVisit || "-";
     return `
       <article class="place-card">
         <div>
@@ -171,14 +264,14 @@ function render() {
           </div>
           <div class="meta">
             <span><b>${nextVisit}</b>다음 방문</span>
-            <span><b>${place.lastVisit}</b>마지막 방문</span>
-            <span><b>${intervalLabel(place)}</b>방문 주기</span>
+            <span><b>${lastVisit}</b>마지막 방문</span>
+            <span><b>${escapeHtml(scheduleLabel(place))}</b>스케줄</span>
           </div>
           ${place.address ? `<p class="note">${escapeHtml(place.address)}</p>` : ""}
           ${place.note ? `<p class="note">${escapeHtml(place.note)}</p>` : ""}
         </div>
         <div class="card-actions">
-          <button class="primary-btn" data-action="complete" data-id="${place.id}" type="button">방문 완료</button>
+          <button class="primary-btn" data-action="complete" data-id="${place.id}" type="button">완료</button>
           <button class="secondary-btn" data-action="history" data-id="${place.id}" type="button">기록</button>
           <button class="secondary-btn" data-action="edit" data-id="${place.id}" type="button">수정</button>
         </div>
@@ -196,17 +289,35 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
+function updateScheduleFields() {
+  const type = el.scheduleTypeInput.value;
+  el.intervalFields.classList.toggle("hidden", type !== "interval");
+  el.weekdayFields.classList.toggle("hidden", type !== "weekday");
+  el.rotationFields.classList.toggle("hidden", type !== "rotation");
+}
+
 function openPlaceDialog(place = null) {
   el.placeForm.reset();
+  const schedule = place ? getSchedule(place) : { type: "interval" };
   el.placeId.value = place?.id || "";
   el.dialogTitle.textContent = place ? "방문처 수정" : "방문처 추가";
   el.deleteBtn.classList.toggle("hidden", !place);
   el.nameInput.value = place?.name || "";
   el.addressInput.value = place?.address || "";
-  el.intervalInput.value = place?.interval || 1;
-  el.unitInput.value = place?.unit || "days";
-  el.lastVisitInput.value = place?.lastVisit || todayString();
+  el.scheduleTypeInput.value = schedule.type || "interval";
+  el.intervalInput.value = schedule.interval || 1;
+  el.unitInput.value = schedule.unit || "days";
+  el.lastVisitInput.value = schedule.lastVisit || place?.lastVisit || todayString();
+  el.weekdayInputs.forEach((input) => {
+    input.checked = (schedule.weekdays || []).map(Number).includes(Number(input.value));
+  });
+  el.rotationGroupInput.value = schedule.group || "";
+  el.rotationIntervalInput.value = schedule.intervalDays || 2;
+  el.rotationOrderInput.value = schedule.order || 1;
+  el.rotationStartInput.value = schedule.startDate || todayString();
+  el.timeSlotInput.value = schedule.timeSlot || "all-day";
   el.noteInput.value = place?.note || "";
+  updateScheduleFields();
   el.placeDialog.showModal();
 }
 
@@ -214,17 +325,47 @@ function closePlaceDialog() {
   el.placeDialog.close();
 }
 
+function readScheduleFromForm(existing) {
+  const type = el.scheduleTypeInput.value;
+  const timeSlot = el.timeSlotInput.value;
+  if (type === "weekday") {
+    const weekdays = el.weekdayInputs.filter((input) => input.checked).map((input) => Number(input.value));
+    return {
+      type,
+      weekdays: weekdays.length ? weekdays : [new Date().getDay()],
+      timeSlot
+    };
+  }
+  if (type === "rotation") {
+    return {
+      type,
+      group: el.rotationGroupInput.value.trim() || "순번 그룹",
+      intervalDays: Number(el.rotationIntervalInput.value || 2),
+      order: Number(el.rotationOrderInput.value || 1),
+      startDate: el.rotationStartInput.value || todayString(),
+      timeSlot
+    };
+  }
+  return {
+    type,
+    interval: Number(el.intervalInput.value || 1),
+    unit: el.unitInput.value,
+    lastVisit: el.lastVisitInput.value || existing?.lastVisit || todayString(),
+    timeSlot
+  };
+}
+
 function handleSave(event) {
   event.preventDefault();
   const id = el.placeId.value || crypto.randomUUID();
   const existing = state.places.find((place) => place.id === id);
+  const schedule = readScheduleFromForm(existing);
   const place = {
     id,
     name: el.nameInput.value.trim(),
     address: el.addressInput.value.trim(),
-    interval: Number(el.intervalInput.value),
-    unit: el.unitInput.value,
-    lastVisit: el.lastVisitInput.value,
+    schedule,
+    lastVisit: schedule.lastVisit || existing?.lastVisit || "-",
     note: el.noteInput.value.trim(),
     history: existing?.history || []
   };
@@ -234,8 +375,8 @@ function handleSave(event) {
   } else {
     place.history = [{
       id: crypto.randomUUID(),
-      date: place.lastVisit,
-      memo: "초기 마지막 방문일",
+      date: place.lastVisit === "-" ? todayString() : place.lastVisit,
+      memo: "초기 등록",
       createdAt: new Date().toISOString()
     }];
     state.places.push(place);
@@ -250,8 +391,11 @@ function completeVisit(id) {
   const today = todayString();
   state.places = state.places.map((place) => {
     if (place.id !== id) return place;
+    const schedule = getSchedule(place);
+    const nextSchedule = schedule.type === "interval" ? { ...schedule, lastVisit: today } : schedule;
     return {
       ...place,
+      schedule: nextSchedule,
       lastVisit: today,
       history: [
         {
@@ -328,24 +472,70 @@ function importData(file) {
   reader.readAsText(file);
 }
 
+function makeIntervalPlace(name, interval, unit = "days", timeSlot = "all-day", note = "") {
+  return {
+    id: crypto.randomUUID(),
+    name,
+    address: "",
+    schedule: {
+      type: "interval",
+      interval,
+      unit,
+      lastVisit: todayString(),
+      timeSlot
+    },
+    lastVisit: todayString(),
+    note,
+    history: [{ id: crypto.randomUUID(), date: todayString(), memo: "초기 등록", createdAt: new Date().toISOString() }]
+  };
+}
+
+function makeWeekdayPlace(name, weekdays, timeSlot) {
+  return {
+    id: crypto.randomUUID(),
+    name,
+    address: "",
+    schedule: { type: "weekday", weekdays, timeSlot },
+    lastVisit: "-",
+    note: "",
+    history: []
+  };
+}
+
+function makeRotationPlaces(group, names, intervalDays, startDate, note = "") {
+  return names.map((name, index) => ({
+    id: crypto.randomUUID(),
+    name,
+    address: "",
+    schedule: {
+      type: "rotation",
+      group,
+      intervalDays,
+      order: index + 1,
+      groupSize: names.length,
+      startDate,
+      timeSlot: "all-day"
+    },
+    lastVisit: "-",
+    note,
+    history: []
+  }));
+}
+
 function seedIfEmpty() {
   if (state.places.length > 0) return;
+  const today = todayString();
   state.places = [
-    {
-      id: crypto.randomUUID(),
-      name: "샘플 방문처",
-      address: "주소 또는 위치 메모를 입력하세요.",
-      interval: 14,
-      unit: "days",
-      lastVisit: todayString(),
-      note: "수정 버튼으로 실제 방문처로 바꿔보세요.",
-      history: [{
-        id: crypto.randomUUID(),
-        date: todayString(),
-        memo: "샘플 기록",
-        createdAt: new Date().toISOString()
-      }]
-    }
+    ...["세븐주차장", "계단집", "미쿠니", "다맛", "사거리", "30표지판", "어멍", "한전"]
+      .map((name) => makeIntervalPlace(name, 1)),
+    ...makeRotationPlaces("이틀 방문 A그룹", ["흑섬", "세븐", "식수원"], 2, today, "이틀마다 한 곳씩 순번 방문"),
+    ...makeRotationPlaces("이틀 방문 B그룹", ["교회", "오페라", "창고근처집"], 2, today, "이틀마다 한 곳씩 순번 방문"),
+    makeIntervalPlace("방파제", 2, "days", "half-day"),
+    makeIntervalPlace("서흘길맥", 3, "days", "half-day"),
+    makeIntervalPlace("바닷가", 3, "days", "half-day"),
+    makeIntervalPlace("방파제 입구", 3),
+    makeIntervalPlace("창고", 5),
+    makeWeekdayPlace("신촌", [3, 0], "evening")
   ];
   saveState();
 }
@@ -358,6 +548,7 @@ function bindEvents() {
   el.deleteBtn.addEventListener("click", deleteCurrentPlace);
   el.exportBtn.addEventListener("click", exportData);
   el.importInput.addEventListener("change", (event) => importData(event.target.files[0]));
+  el.scheduleTypeInput.addEventListener("change", updateScheduleFields);
   el.search.addEventListener("input", (event) => {
     state.search = event.target.value;
     render();
