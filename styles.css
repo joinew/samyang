@@ -37,7 +37,7 @@ button {
 
 .app-header,
 main {
-  width: min(1080px, calc(100% - 32px));
+  width: min(430px, calc(100% - 22px));
   margin: 0 auto;
 }
 
@@ -45,7 +45,12 @@ main {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 28px 0 18px;
+  padding: max(18px, env(safe-area-inset-top)) 0 14px;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: rgba(245, 242, 234, 0.92);
+  backdrop-filter: blur(14px);
 }
 
 .eyebrow {
@@ -63,19 +68,19 @@ p {
 
 h1 {
   margin-bottom: 0;
-  font-size: 30px;
+  font-size: 24px;
 }
 
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  margin-bottom: 18px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
 }
 
 .summary {
-  min-height: 92px;
-  padding: 16px;
+  min-height: 82px;
+  padding: 13px;
   border: 1px solid var(--line);
   border-left: 5px solid var(--primary);
   border-radius: 8px;
@@ -91,8 +96,8 @@ h1 {
 
 .summary strong {
   display: block;
-  margin-top: 8px;
-  font-size: 30px;
+  margin-top: 6px;
+  font-size: 26px;
 }
 
 .summary.overdue {
@@ -110,7 +115,8 @@ h1 {
 .toolbar,
 .tools-row {
   display: flex;
-  align-items: center;
+  align-items: stretch;
+  flex-direction: column;
   gap: 10px;
   margin-bottom: 12px;
 }
@@ -131,12 +137,23 @@ h1 {
 .danger-btn,
 .ghost-btn,
 .icon-btn {
-  min-height: 40px;
+  min-height: 46px;
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 0 14px;
   background: var(--surface);
   color: var(--ink);
+}
+
+.tabs,
+.primary-btn,
+.secondary-btn,
+.danger-btn {
+  width: 100%;
+}
+
+.tab {
+  flex: 1 1 calc(50% - 8px);
 }
 
 .tab.active,
@@ -171,7 +188,7 @@ h1 {
 
 .search {
   width: 100%;
-  min-height: 42px;
+  min-height: 46px;
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 0 12px;
@@ -185,14 +202,14 @@ h1 {
 .place-list {
   display: grid;
   gap: 12px;
-  padding-bottom: 36px;
+  padding-bottom: calc(36px + env(safe-area-inset-bottom));
 }
 
 .place-card {
   display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 16px;
-  padding: 18px;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  padding: 16px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface);
@@ -209,7 +226,7 @@ h1 {
 
 .place-title-row h3 {
   margin: 0;
-  font-size: 19px;
+  font-size: 18px;
 }
 
 .badge {
@@ -238,7 +255,7 @@ h1 {
 
 .meta {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 8px;
   margin: 10px 0;
   color: var(--muted);
@@ -257,11 +274,17 @@ h1 {
 }
 
 .card-actions {
-  display: flex;
-  align-items: flex-end;
+  display: grid;
+  align-items: stretch;
   justify-content: center;
-  flex-direction: column;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 8px;
+}
+
+.card-actions .primary-btn,
+.card-actions .secondary-btn {
+  min-height: 44px;
+  padding: 0 8px;
 }
 
 .empty {
@@ -274,7 +297,7 @@ h1 {
 }
 
 dialog {
-  width: min(560px, calc(100% - 24px));
+  width: min(430px, calc(100% - 18px));
   border: 0;
   border-radius: 10px;
   padding: 0;
@@ -286,7 +309,7 @@ dialog::backdrop {
 }
 
 .dialog-card {
-  padding: 20px;
+  padding: 18px;
   background: var(--surface);
 }
 
@@ -300,7 +323,7 @@ dialog::backdrop {
 
 .dialog-head h2 {
   margin: 0;
-  font-size: 21px;
+  font-size: 20px;
 }
 
 label {
@@ -324,7 +347,7 @@ label textarea {
 
 .form-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 10px;
 }
 
