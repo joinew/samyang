@@ -1,0 +1,18 @@
+{
+  "name": "방문 스케줄",
+  "short_name": "방문스케줄",
+  "description": "방문처별 방문 주기를 관리하는 로컬 PWA",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f5f2ea",
+  "theme_color": "#1f6f5b",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1f6f5b">
+  <title>방문 스케줄</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <div>
+      <p class="eyebrow">Visit PWA</p>
+      <h1>방문 스케줄</h1>
+    </div>
+    <button id="installBtn" class="icon-btn hidden" type="button">설치</button>
+  </header>
+
+  <main>
+    <section class="summary-grid" aria-label="방문 요약">
+      <article class="summary overdue">
+        <span>지연</span>
+        <strong id="overdueCount">0</strong>
+      </article>
+      <article class="summary today">
+        <span>오늘</span>
+        <strong id="todayCount">0</strong>
+      </article>
+      <article class="summary soon">
+        <span>7일 이내</span>
+        <strong id="soonCount">0</strong>
+      </article>
+      <article class="summary total">
+        <span>전체</span>
+        <strong id="totalCount">0</strong>
+      </article>
+    </section>
+
+    <section class="toolbar">
+      <div class="tabs" role="tablist" aria-label="방문처 필터">
+        <button class="tab active" data-filter="all" type="button">전체</button>
+        <button class="tab" data-filter="overdue" type="button">지연</button>
+        <button class="tab" data-filter="today" type="button">오늘</button>
+        <button class="tab" data-filter="soon" type="button">곧 방문</button>
+      </div>
+      <button id="newPlaceBtn" class="primary-btn" type="button">방문처 추가</button>
+    </section>
+
+    <section class="tools-row">
+      <input id="searchInput" class="search" type="search" placeholder="방문처, 주소, 메모 검색">
+      <button id="exportBtn" class="secondary-btn" type="button">백업</button>
+      <label class="secondary-btn file-btn">
+        복원
+        <input id="importInput" type="file" accept="application/json">
+      </label>
+    </section>
+
+    <section id="placeList" class="place-list" aria-live="polite"></section>
+  </main>
+
+  <dialog id="placeDialog">
+    <form id="placeForm" method="dialog" class="dialog-card">
+      <div class="dialog-head">
+        <h2 id="dialogTitle">방문처 추가</h2>
+        <button id="closeDialogBtn" class="ghost-btn" type="button" aria-label="닫기">×</button>
+      </div>
+      <input id="placeId" type="hidden">
+
+      <label>
+        방문처명
+        <input id="nameInput" type="text" required placeholder="예: A마트 강남점">
+      </label>
+
+      <label>
+        주소 / 위치 메모
+        <input id="addressInput" type="text" placeholder="예: 서울 강남구 ...">
+      </label>
+
+      <div class="form-grid">
+        <label>
+          주기 값
+          <input id="intervalInput" type="number" min="1" value="1" required>
+        </label>
+        <label>
+          주기 단위
+          <select id="unitInput" required>
+            <option value="days">일마다</option>
+            <option value="weeks">주마다</option>
+            <option value="months">개월마다</option>
+          </select>
+        </label>
+      </div>
+
+      <label>
+        마지막 방문일
+        <input id="lastVisitInput" type="date" required>
+      </label>
+
+      <label>
+        메모
+        <textarea id="noteInput" rows="3" placeholder="방문 시 참고할 내용"></textarea>
+      </label>
+
+      <div class="dialog-actions">
+        <button id="deleteBtn" class="danger-btn hidden" type="button">삭제</button>
+        <button class="primary-btn" type="submit">저장</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="historyDialog">
+    <div class="dialog-card">
+      <div class="dialog-head">
+        <h2 id="historyTitle">방문 기록</h2>
+        <button id="closeHistoryBtn" class="ghost-btn" type="button" aria-label="닫기">×</button>
+      </div>
+      <div id="historyList" class="history-list"></div>
+    </div>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
